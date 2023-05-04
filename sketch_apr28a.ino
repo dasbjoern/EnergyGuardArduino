@@ -13,9 +13,10 @@ char mac[] = "0xec,0x62,0x60,0x81,0x14,0xa8";
 /*------------------------------------------------------*/
 
 /*-------------------constants--------------------------*/
-const int r1 = 6; // change to used resistor value.
-const int analogConstant = 1024; // analog input value 0-1024
+const double r1 = 6.5; // change to used resistor value.
+const double analogConstant = 1023.0; // analog input value 0-1024
 const double voltConstant = 3.3; // arduino board voltage
+const int wattMultiplier = 10000;
 /*------------------------------------------------------*/
 
 /*-------------------WiFi info--------------------------*/
@@ -23,21 +24,14 @@ const double voltConstant = 3.3; // arduino board voltage
 #define WIFI_PASSWORD "837576Z!"   // your network password  /}63J998w
 
 int status = WL_IDLE_STATUS;
-IPAddress ip(192,168,137,99);  // Server
+IPAddress ip(192,168,137,17);  // Server
 //char server[]="localhost";  // remote server we will connect to
 int port = 8888;
 /*------------------------------------------------------*/
 
 /*------------Variables for energy usage----------------*/
-double current = 0;
-double watt = 0;
-/*------------------------------------------------------*/
-
-// maybe not needed
-/*-------------------Timer Info-------------------------*/
-unsigned long currentTime = 0;
-unsigned long previousTime = 0;
-const long interval = 1000; // 1 second in milliseconds
+double current = 0; // current calc variable
+double watt = 0; // watt calc variable
 /*------------------------------------------------------*/
 
 /*------------------Protocall info----------------------*/
@@ -75,16 +69,18 @@ void setup() {
   Serial.println();
   Serial.print("Connected to ");
   Serial.println(WIFI_SSID);
+  Serial.print("on IP Address: ");
+  Serial.println(WiFi.localIP());
 
   server.begin();
-
 }
+
 void loop() {
-  // put your main code here, to run repeatedly:
-  currentTime = millis();
+
+  // Calculates the current and stores it in current
   current = currentCalc(analogRead(ANALOGREFPIN), analogRead(ANALOGRESISTORPIN));
 
-  // stores the calculated watt
+  // Calculates the watt and stores it in watt
   watt = wattCalc(current, analogRead(ANALOGPIN));
 
   // Server variables
@@ -103,13 +99,18 @@ void loop() {
       }
 
       
-      int test = protocollRecieve(buf);
+      int shutDInt = protocollRecieve(buf);
+      client.flush();
+
+      deviceStatus(shutDInt);
       
+      // int to char[]
       itoa(watt, buffr, 10);
-      protocollSend(buffr, test);
+      protocollSend(buffr, shutDInt);
       
       server.println(protocoll);
       Serial.println();
+      protocoll = "";
       
     }
     client.stop();
@@ -117,49 +118,80 @@ void loop() {
 }
 
 // Splits up the data for the protocoll
-int protocollRecieve(char *data){
+int protocollRecieve(char *shutdD){
 
   char *token;
   char str1[3], str2[2], str3[6];
-  String str11;
-  String str12;
-  String str13;
   int shutdI = 0;
 
-  token = strtok(data, "?");  // Get the first token
+  token = strtok(shutdD, "?");  // Get the first token
   strcpy(str1, token);       // Copy the token to str1
   token = strtok(NULL, "?"); // Get the second token
   strcpy(str2, token);       // Copy the token to str2
   token = strtok(NULL, "?"); // Get the third token
-  strcpy(str3, token);       // Copy the token to str3
   String hello(str1);
   String shutd(str2);
-  String timer(str3);
 
-  shutdI = shutd.toInt();
+  if(hello == "OK"){
+    /* --For debugging-- */
+    Serial.print("Answer: ");
+    Serial.println(hello);
+    /* ------------------*/
+  }
   
-  Serial.print("answer:");
-  Serial.print(hello);
-  Serial.print(" shutdown:");
-  Serial.print(shutd);
-  Serial.print(" timer:");
-  Serial.println(timer);
-  return shutdI;
+  if(shutd == "0"){
+    /* --For debugging-- */
+    Serial.print("Device OFF:");
+    Serial.println(shutd);
+    /* ------------------*/
+  }else if(shutd == "1"){
+    /* --For debugging-- */
+    Serial.print("Device ON:");
+    Serial.println(shutd);
+    /* ------------------*/
+  }else{
+    Serial.println("NOT VIABLE DATA!");
+  }
+  
+  return (shutdI = shutd.toInt());
 }
 
 // Puts together the protocoll structure
-void protocollSend(char *data, int test){
+void protocollSend(char *data, int shutD){
+  // Order ex:
+  // ARDUINO?MAC?SHUTDOWN?DATA?
+
+  // convert to string
+  String vmac(mac);
+  String vshutD = String(shutD);
+  String vdata(data);
   
+  // Puts together the protocoll in a string
   protocoll = ARDU;
   protocoll = protocoll + "?";
-  String vmac(mac);
-  String vtest = String(test);
-  protocoll.concat(vmac);
+  // MAC?
+  protocoll = protocoll + vmac;
   protocoll = protocoll + "?";
-  protocoll = protocoll + vtest;
+  // shutdown?
+  protocoll = protocoll + vshutD;
   protocoll = protocoll + "?";
-  String vdata(data);
-  protocoll.concat(vdata);
+  // data?
+  protocoll = protocoll + vdata;
+  protocoll = protocoll + "?";
+}
+
+// On/Off function for connected device
+int deviceStatus(int deviceStatus){
+  
+    int statusToDatabase = 0;
+    if(deviceStatus == 1){
+      digitalWrite(LED_PIN, HIGH);
+      statusToDatabase = 1;
+    }else if(deviceStatus == 0){
+      digitalWrite(LED_PIN, LOW);
+      statusToDatabase = 0;
+    }
+    return statusToDatabase;
 }
 
 // Calculates the current
@@ -171,9 +203,9 @@ double currentCalc(double voltRef, double volt) {
 }
 
 // Calculates the watts used.
-double wattCalc(double curr, double volt) {
+int wattCalc(double curr, double volt) {
 
-  double value = 0;
-  value = (curr * ((volt * voltConstant) / analogConstant)) * 10000;
+  int value = 0;
+  value = (curr * ((volt * voltConstant) / analogConstant)) * wattMultiplier;
   return value;
 }
