@@ -1,4 +1,4 @@
-#include <SPI.h>
+//#include <SPI.h>
 #include <WiFiNINA.h>
 
 /*------------------Device info-------------------------*/
@@ -47,31 +47,31 @@ WiFiServer server(port);
 void setup() {
   
   pinMode(LED_PIN, OUTPUT);
-  Serial.begin(9600);
-
+  //Serial.begin(9600);
+  /*
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
-  
+  */
   int status = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  Serial.print("Attempting to connect to SSID: ");
-  Serial.println(WIFI_SSID);
+  //Serial.print("Attempting to connect to SSID: ");
+  //Serial.println(WIFI_SSID);
 
   // Waits for WiFi to connect
   while(status != WL_CONNECTED){
-    Serial.print(".");
+    //Serial.print(".");
     status = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     delay(1000);
     
   }
-  
+  /*
   Serial.println();
   Serial.print("Connected to ");
   Serial.println(WIFI_SSID);
   Serial.print("on IP Address: ");
   Serial.println(WiFi.localIP());
-
+  */
   server.begin();
 }
 
@@ -109,7 +109,7 @@ void loop() {
       protocollSend(buffr, shutDInt);
       
       server.println(protocoll);
-      Serial.println();
+      //Serial.println();
       protocoll = "";
       
     }
@@ -134,23 +134,29 @@ int protocollRecieve(char *shutdD){
 
   if(hello == "OK"){
     /* --For debugging-- */
+    /*
     Serial.print("Answer: ");
     Serial.println(hello);
+    */
     /* ------------------*/
   }
   
   if(shutd == "0"){
     /* --For debugging-- */
+    /*
     Serial.print("Device OFF:");
     Serial.println(shutd);
+    */
     /* ------------------*/
   }else if(shutd == "1"){
     /* --For debugging-- */
+    /*
     Serial.print("Device ON:");
     Serial.println(shutd);
+    */
     /* ------------------*/
   }else{
-    Serial.println("NOT VIABLE DATA!");
+    //Serial.println("NOT VIABLE DATA!");
   }
   
   return (shutdI = shutd.toInt());
